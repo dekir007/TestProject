@@ -5,6 +5,7 @@ services:
       - db
     volumes:
       - ./src:/src
+    command: bash -c 'while !</dev/tcp/db/${PORT}; do sleep .5; done; python ./main.py'
   db:
     image: postgres
     environment:
@@ -13,5 +14,7 @@ services:
       POSTGRES_DB: ${DBNAME}
       PGDATA: /data/postgres
     ports:
-      - "5433:5432"
+      - "5433:${PORT}"
     restart: always
+    volumes:
+      - ./initdb:/docker-entrypoint-initdb.d/
