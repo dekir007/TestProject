@@ -7,14 +7,19 @@ services:
       - ./src:/src
     command: bash -c 'while !</dev/tcp/db/${PORT}; do sleep .5; done; python ./main.py'
   db:
-    image: postgres
+    build: ./initdb
+    #image: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${DBNAME}
       PGDATA: /data/postgres
+      TESTPROJECT_USER: ${TESTPROJECT_USER}
+      TESTPROJECT_PASSWORD: ${TESTPROJECT_PASSWORD}
     ports:
       - "5433:${PORT}"
     restart: always
     volumes:
       - ./initdb:/docker-entrypoint-initdb.d/
+    entrypoint: bash -c "envsubst < /docker-entrypoint-initdb.d/create_user.sql.template > /docker-entrypoint-initdb.d/create_user.sql && docker-entrypoint.sh postgres"
+    command: bash -c "until psql -h localhost -U ${POSTGRES_USER} -d ${DBNAME} -c 'select 1'; sleep .4; done; psql -h localhost -U ${POSTGRES_USER} -d ${DBNAME} -f /docker-entrypoint-initdb.d/create_user.sql"

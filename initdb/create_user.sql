@@ -1,18 +1,10 @@
-DO
-$$
-BEGIN
-    IF EXISTS (
-        SELECT FROM pg_catalog.pg_roles
-        WHERE rolname = 'new_user') THEN
+DROP ROLE IF EXISTS testproject;
 
-        DROP ROLE new_user;
-    END IF;
-END
-$$;
+CREATE ROLE testproject WITH LOGIN PASSWORD '123123';
 
-CREATE ROLE new_user WITH LOGIN PASSWORD 'new_password';
+GRANT CONNECT ON DATABASE postgres TO testproject;
+GRANT USAGE, CREATE ON SCHEMA public TO testproject;
 
-GRANT CONNECT ON DATABASE ${DBNAME} TO new_user;
-GRANT USAGE ON SCHEMA public TO new_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO new_user;
---ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO new_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO testproject;
+-- нужен для автоматической выдачи прав на новые таблицы
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO testproject;
