@@ -9,7 +9,7 @@ COPY requirements.txt .
 
 #RUN echo "Contents of requirements.txt:" && cat requirements.txt
 
-#RUN pip install pandas
+#RUN pip install python-dotenv
 
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
