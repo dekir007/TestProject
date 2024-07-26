@@ -123,20 +123,8 @@ def create_table_imoex_if_not_found(cur):
         logging.info(f"Table imoex doesn't exists, creating...")
 
         try:
-            cur.execute("""CREATE TABLE public.imoex (
-                            id serial4 NOT NULL,
-                            ticker varchar NOT NULL,
-                            per bpchar(1) NOT NULL,
-                            "date" date NOT NULL,
-                            "time" time NOT NULL,
-                            "open" money NOT NULL,
-                            high money NOT NULL,
-                            low money NOT NULL,
-                            "close" money NOT NULL,
-                            vol int8 NOT NULL,
-                            CONSTRAINT imoex_pk PRIMARY KEY (id)
-                        );
-                        """)
+            query = os.getenv('CREATE_TABLE')
+            cur.execute(query)
         except Exception as e:
             logging.error(f"Error while trying to create table imoex: {e}")
             return False
