@@ -1,5 +1,6 @@
 import csv
 import os
+import re
 import numpy as np
 import psycopg2
 import requests
@@ -117,29 +118,44 @@ def get_postgres_connection():
     return conn
 
 
-def create_table_imoex_if_not_found(cur):
-    cur.execute("select exists(select * from information_schema.tables where table_name=%s)", ('imoex',))
+def create_table_if_not_found(cur):
+    query = None
+    with open('create_table.sql') as create_table:
+        query = create_table.read()
+    if not query:
+        logging.error(f"Error reading create_table.sql or query is empty")
+        return False
+    # да, регулярки - это тяжелый инструмент, но в данном случаем самый простой
+    pattern = r'CREATE\s+TABLE\s+(?:\w+\.)?(\w+)'
+    match = re.search(pattern, query, re.IGNORECASE)
+    table_name = match.group(1)
+    cur.execute("select exists(select * from information_schema.tables where table_name=%s)", (table_name,))
     if not cur.fetchone()[0]:  # cur.fetchone()[0] returns true if exists
-        logging.info(f"Table imoex doesn't exists, creating...")
+        logging.info(f"Table {table_name} doesn't exists, creating...")
 
         try:
-            query = os.getenv('CREATE_TABLE')
+            # with open('create_table.sql') as create_table:
+            #     query = create_table.read()
+            # if not query:
+            #     logging.error(f"Error reading create_table.sql or query is empty")
+            #     return
+            #query = os.getenv('CREATE_TABLE')
             cur.execute(query)
         except Exception as e:
-            logging.error(f"Error while trying to create table imoex: {e}")
+            logging.error(f"Error while trying to create table {table_name}: {e}")
             return False
-        logging.info(f"Table imoex was created successfully")
-    return True
+        logging.info(f"Table {table_name} was created successfully")
+    return table_name
 
 
-def load_df_values_to_postgres(cur, df_values):
+def load_df_values_to_postgres(cur, df_values, table_name):
     sio = StringIO()
     writer = csv.writer(sio)
     writer.writerows(df_values)
     sio.seek(0)
 
     # мы не хотим сами задавать id
-    cur.copy_from(sio, 'imoex', sep=',',
+    cur.copy_from(sio, table_name, sep=',',
                   columns=('ticker', 'per', 'date', 'time', 'open', 'high', 'low', 'close', 'vol'))
 
 
@@ -151,14 +167,15 @@ def load_to_postgresql(df_values):
 
         cur = conn.cursor()
 
-        # check if imoex exists and create if doesn't; return False when get error creating it
-        if not create_table_imoex_if_not_found(cur):
-            logging.error(f"Table wasn't created. Execution stopped.")
+        # check if table exists and create if doesn't; return False when get error creating it
+        table_name = create_table_if_not_found(cur)
+        if not table_name:
+            logging.error(f"Table {table_name} wasn't created. Execution stopped.")
             return
 
-        cur.execute("truncate table imoex")
+        cur.execute(f"truncate table {table_name}")
 
-        load_df_values_to_postgres(cur, df_values)
+        load_df_values_to_postgres(cur, df_values, table_name)
 
         conn.commit()
         cur.close()
